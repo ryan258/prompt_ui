@@ -21,6 +21,78 @@ const MOCK_SNIPPETS: Snippet[] = [
     updatedAt: Date.now(),
     isFavorite: true,
   },
+  {
+    id: '3',
+    title: 'Summarize Article',
+    content: 'Summarize the following article in 3 bullet points.',
+    tags: ['summarize', 'ai'],
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    isFavorite: false,
+  },
+  {
+    id: '4',
+    title: 'Translate to Spanish',
+    content: 'Translate this text into Spanish, keeping the tone informal.',
+    tags: ['translate', 'spanish'],
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    isFavorite: false,
+  },
+  {
+    id: '5',
+    title: 'Polite Decline',
+    content: 'Thank you for your offer, but I will have to decline at this time.',
+    tags: ['response', 'polite'],
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    isFavorite: false,
+  },
+  {
+    id: '6',
+    title: 'Code Review Checklist',
+    content: '- Are all functions documented?\n- Are edge cases handled?\n- Is the code DRY?\n- Are there sufficient tests?',
+    tags: ['checklist', 'code'],
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    isFavorite: false,
+  },
+  {
+    id: '7',
+    title: 'Ask for Feedback',
+    content: 'Could you please provide feedback on the following draft?',
+    tags: ['feedback', 'request'],
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    isFavorite: false,
+  },
+  {
+    id: '8',
+    title: 'Meeting Agenda',
+    content: '1. Project updates\n2. Open issues\n3. Next steps',
+    tags: ['meeting', 'agenda'],
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    isFavorite: false,
+  },
+  {
+    id: '9',
+    title: 'Bug Report Template',
+    content: 'Describe the bug:\nSteps to reproduce:\nExpected behavior:\nScreenshots:',
+    tags: ['template', 'bug'],
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    isFavorite: false,
+  },
+  {
+    id: '10',
+    title: 'Thank You Note',
+    content: 'Thank you for your help! I really appreciate it.',
+    tags: ['gratitude', 'thanks'],
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    isFavorite: true,
+  },
 ];
 
 function uuid() {
@@ -35,6 +107,9 @@ const SidebarApp: React.FC = () => {
   const [newTitle, setNewTitle] = useState('');
   const [newContent, setNewContent] = useState('');
   const [newTags, setNewTags] = useState('');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [activeTags, setActiveTags] = useState<string[]>([]);
 
   useEffect(() => {
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
@@ -93,7 +168,7 @@ const SidebarApp: React.FC = () => {
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
             <circle cx="12" cy="12" r="3" />
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.09A1.65 1.65 0 0 0 9 3.09V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.09a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.09c.2.63.77 1.1 1.51 1.1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1.51-1 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.09A1.65 1.65 0 0 0 9 3.09V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.09a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.09c.2.63.77 1.1 1.51 1.1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
           </svg>
         </button>
       </header>
@@ -105,10 +180,10 @@ const SidebarApp: React.FC = () => {
           placeholder="Search prompts..."
           className="w-full px-3 py-2 rounded border border-brand-dark bg-white text-gray-900 focus:outline-brand-dark"
           aria-label="Search prompts"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
         />
         <div className="flex flex-wrap gap-2">
-          {/* Tag filter chips will go here */}
-          <button className="px-2 py-1 rounded bg-brand-dark text-brand-light text-xs font-semibold">+ Add Tag</button>
           <button
             className="px-2 py-1 rounded bg-brand-dark text-brand-light text-xs font-semibold ml-auto"
             onClick={() => setShowAdd(true)}
@@ -194,20 +269,53 @@ const SidebarApp: React.FC = () => {
           ) : snippets.length === 0 ? (
             <div className="text-center text-gray-500">No snippets yet.</div>
           ) : (
-            snippets.map(snippet => (
-              <div key={snippet.id} className="bg-white rounded shadow p-3 flex flex-col gap-1 border border-brand-dark">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium text-brand-dark">{snippet.title}</span>
-                  <button className="text-xs text-brand-dark underline">Expand</button>
-                </div>
-                <div className="truncate text-gray-700 text-sm">{snippet.content}</div>
-                <div className="flex gap-2 mt-1">
-                  {snippet.tags.map(tag => (
-                    <span key={tag} className="bg-brand px-2 py-0.5 rounded text-xs text-brand-dark">{tag}</span>
-                  ))}
-                </div>
-              </div>
-            ))
+            snippets
+              .filter(snippet => {
+                const matchesSearch =
+                  snippet.title.toLowerCase().includes(search.toLowerCase()) ||
+                  snippet.content.toLowerCase().includes(search.toLowerCase()) ||
+                  snippet.tags.some(tag => tag.toLowerCase().includes(search.toLowerCase()));
+                const matchesTags = activeTags.length === 0 || activeTags.every(tag => snippet.tags.includes(tag));
+                return matchesSearch && matchesTags;
+              })
+              .map(snippet => {
+                const expanded = expandedId === snippet.id;
+                return (
+                  <div key={snippet.id} className="bg-white rounded shadow p-3 flex flex-col gap-1 border border-brand-dark">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-brand-dark">{snippet.title}</span>
+                      <button
+                        className="text-xs text-brand-dark underline"
+                        aria-expanded={expanded}
+                        aria-controls={`snippet-content-${snippet.id}`}
+                        onClick={() => setExpandedId(expanded ? null : snippet.id)}
+                      >
+                        {expanded ? 'Collapse' : 'Expand'}
+                      </button>
+                    </div>
+                    <div
+                      id={`snippet-content-${snippet.id}`}
+                      className={expanded ? 'text-gray-700 text-sm whitespace-pre-wrap' : 'truncate text-gray-700 text-sm'}
+                    >
+                      {snippet.content}
+                    </div>
+                    <div className="flex gap-2 mt-1">
+                      {snippet.tags.map(tag => (
+                        <button
+                          key={tag}
+                          className={`bg-brand px-2 py-0.5 rounded text-xs font-semibold border ${activeTags.includes(tag) ? 'bg-brand-dark text-brand-light border-brand-dark' : 'text-brand-dark border-brand'}`}
+                          onClick={() => setActiveTags(activeTags.includes(tag)
+                            ? activeTags.filter(t => t !== tag)
+                            : [...activeTags, tag])}
+                          aria-pressed={activeTags.includes(tag)}
+                        >
+                          {tag}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })
           )}
         </div>
       </main>
