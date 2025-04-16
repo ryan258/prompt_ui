@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Snippet } from '../shared/types';
-import { getSnippets, addSnippet } from '../shared/storage';
+import { getSnippets, addSnippet, updateSnippet, deleteSnippet } from '../shared/storage';
 
 const MOCK_SNIPPETS: Snippet[] = [
   {
@@ -110,6 +110,10 @@ const SidebarApp: React.FC = () => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [activeTags, setActiveTags] = useState<string[]>([]);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editContent, setEditContent] = useState('');
+  const [editTags, setEditTags] = useState('');
 
   useEffect(() => {
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
@@ -155,6 +159,45 @@ const SidebarApp: React.FC = () => {
     setNewTitle('');
     setNewContent('');
     setNewTags('');
+  };
+
+  const handleDeleteSnippet = async (id: string) => {
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      await deleteSnippet(id);
+    } else {
+      setSnippets(snippets.filter(s => s.id !== id));
+    }
+    if (expandedId === id) setExpandedId(null);
+  };
+
+  const openEditModal = (snippet: Snippet) => {
+    setEditId(snippet.id);
+    setEditTitle(snippet.title);
+    setEditContent(snippet.content);
+    setEditTags(snippet.tags.join(', '));
+  };
+
+  const handleEditSnippet = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editTitle.trim() || !editContent.trim() || !editId) return;
+    const updated: Snippet = {
+      id: editId,
+      title: editTitle.trim(),
+      content: editContent.trim(),
+      tags: editTags.split(',').map(t => t.trim()).filter(Boolean),
+      createdAt: Date.now(), // Optionally preserve original createdAt
+      updatedAt: Date.now(),
+      isFavorite: snippets.find(s => s.id === editId)?.isFavorite || false,
+    };
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      await updateSnippet(updated);
+    } else {
+      setSnippets(snippets.map(s => (s.id === editId ? updated : s)));
+    }
+    setEditId(null);
+    setEditTitle('');
+    setEditContent('');
+    setEditTags('');
   };
 
   return (
@@ -284,14 +327,30 @@ const SidebarApp: React.FC = () => {
                   <div key={snippet.id} className="bg-white rounded shadow p-3 flex flex-col gap-1 border border-brand-dark">
                     <div className="flex items-center justify-between">
                       <span className="font-medium text-brand-dark">{snippet.title}</span>
-                      <button
-                        className="text-xs text-brand-dark underline"
-                        aria-expanded={expanded}
-                        aria-controls={`snippet-content-${snippet.id}`}
-                        onClick={() => setExpandedId(expanded ? null : snippet.id)}
-                      >
-                        {expanded ? 'Collapse' : 'Expand'}
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          className="text-xs text-brand-dark underline"
+                          aria-expanded={expanded}
+                          aria-controls={`snippet-content-${snippet.id}`}
+                          onClick={() => setExpandedId(expanded ? null : snippet.id)}
+                        >
+                          {expanded ? 'Collapse' : 'Expand'}
+                        </button>
+                        <button
+                          className="text-xs text-brand-dark underline"
+                          onClick={() => openEditModal(snippet)}
+                          aria-label="Edit snippet"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          className="text-xs text-red-600 underline"
+                          onClick={() => handleDeleteSnippet(snippet.id)}
+                          aria-label="Delete snippet"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                     <div
                       id={`snippet-content-${snippet.id}`}
@@ -319,6 +378,66 @@ const SidebarApp: React.FC = () => {
           )}
         </div>
       </main>
+
+      {/* Edit Snippet Modal */}
+      {editId && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
+          <form
+            className="bg-white rounded shadow-lg p-6 w-80 flex flex-col gap-3 border border-brand-dark"
+            onSubmit={handleEditSnippet}
+            role="dialog"
+            aria-modal="true"
+          >
+            <h2 className="text-lg font-bold text-brand-dark mb-1">Edit Snippet</h2>
+            <label className="text-xs text-brand-dark">
+              Title
+              <input
+                className="w-full mt-1 px-2 py-1 border border-brand-dark rounded"
+                value={editTitle}
+                onChange={e => setEditTitle(e.target.value)}
+                required
+                maxLength={60}
+                autoFocus
+              />
+            </label>
+            <label className="text-xs text-brand-dark">
+              Content
+              <textarea
+                className="w-full mt-1 px-2 py-1 border border-brand-dark rounded"
+                value={editContent}
+                onChange={e => setEditContent(e.target.value)}
+                required
+                rows={4}
+                maxLength={1000}
+              />
+            </label>
+            <label className="text-xs text-brand-dark">
+              Tags (comma separated)
+              <input
+                className="w-full mt-1 px-2 py-1 border border-brand-dark rounded"
+                value={editTags}
+                onChange={e => setEditTags(e.target.value)}
+                placeholder="e.g. ai, productivity"
+              />
+            </label>
+            <div className="flex gap-2 justify-end mt-2">
+              <button
+                type="button"
+                className="px-3 py-1 rounded bg-gray-200 text-gray-800 hover:bg-gray-300"
+                onClick={() => setEditId(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-3 py-1 rounded bg-brand-dark text-brand-light hover:bg-brand focus:outline-brand-dark"
+              >
+                Save
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* Footer / Settings */}
       <footer className="p-2 border-t border-brand-dark bg-brand-light text-xs text-brand-dark text-center">

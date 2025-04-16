@@ -26,3 +26,12 @@ export async function deleteSnippet(id: string): Promise<void> {
   const snippets = await getSnippets();
   await saveSnippets(snippets.filter(s => s.id !== id));
 }
+
+export async function updateSnippet(updated: Snippet): Promise<void> {
+  const snippets = await getSnippets();
+  const idx = snippets.findIndex(s => s.id === updated.id);
+  if (idx !== -1) {
+    snippets[idx] = updated;
+    await saveSnippets(snippets);
+  }
+}
