@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Snippet } from '../shared/types';
-import { getSnippets } from '../shared/storage';
+import { getSnippets, addSnippet } from '../shared/storage';
 
 const MOCK_SNIPPETS: Snippet[] = [
   {
@@ -23,13 +23,20 @@ const MOCK_SNIPPETS: Snippet[] = [
   },
 ];
 
+function uuid() {
+  return crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now();
+}
+
 const SidebarApp: React.FC = () => {
   const [snippets, setSnippets] = useState<Snippet[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showAdd, setShowAdd] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [newContent, setNewContent] = useState('');
+  const [newTags, setNewTags] = useState('');
 
   useEffect(() => {
-    // If chrome.storage is available, use it; otherwise, use mock data
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
       getSnippets().then(data => {
         setSnippets(data);
@@ -52,6 +59,29 @@ const SidebarApp: React.FC = () => {
     }
   }, []);
 
+  const handleAddSnippet = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTitle.trim() || !newContent.trim()) return;
+    const snippet: Snippet = {
+      id: uuid(),
+      title: newTitle.trim(),
+      content: newContent.trim(),
+      tags: newTags.split(',').map(t => t.trim()).filter(Boolean),
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      isFavorite: false,
+    };
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      await addSnippet(snippet);
+    } else {
+      setSnippets([snippet, ...snippets]);
+    }
+    setShowAdd(false);
+    setNewTitle('');
+    setNewContent('');
+    setNewTags('');
+  };
+
   return (
     <div className="flex flex-col h-screen w-80 bg-brand-light border-r border-brand-dark">
       {/* Header */}
@@ -69,18 +99,85 @@ const SidebarApp: React.FC = () => {
       </header>
 
       {/* Search and Tag Filter */}
-      <div className="p-3 border-b border-brand-dark bg-brand-light">
+      <div className="p-3 border-b border-brand-dark bg-brand-light flex flex-col gap-2">
         <input
           type="text"
           placeholder="Search prompts..."
           className="w-full px-3 py-2 rounded border border-brand-dark bg-white text-gray-900 focus:outline-brand-dark"
           aria-label="Search prompts"
         />
-        <div className="flex flex-wrap gap-2 mt-2">
+        <div className="flex flex-wrap gap-2">
           {/* Tag filter chips will go here */}
           <button className="px-2 py-1 rounded bg-brand-dark text-brand-light text-xs font-semibold">+ Add Tag</button>
+          <button
+            className="px-2 py-1 rounded bg-brand-dark text-brand-light text-xs font-semibold ml-auto"
+            onClick={() => setShowAdd(true)}
+            aria-label="Add new snippet"
+          >
+            + Add Snippet
+          </button>
         </div>
       </div>
+
+      {/* Add Snippet Modal */}
+      {showAdd && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
+          <form
+            className="bg-white rounded shadow-lg p-6 w-80 flex flex-col gap-3 border border-brand-dark"
+            onSubmit={handleAddSnippet}
+            role="dialog"
+            aria-modal="true"
+          >
+            <h2 className="text-lg font-bold text-brand-dark mb-1">Add New Snippet</h2>
+            <label className="text-xs text-brand-dark">
+              Title
+              <input
+                className="w-full mt-1 px-2 py-1 border border-brand-dark rounded"
+                value={newTitle}
+                onChange={e => setNewTitle(e.target.value)}
+                required
+                maxLength={60}
+                autoFocus
+              />
+            </label>
+            <label className="text-xs text-brand-dark">
+              Content
+              <textarea
+                className="w-full mt-1 px-2 py-1 border border-brand-dark rounded"
+                value={newContent}
+                onChange={e => setNewContent(e.target.value)}
+                required
+                rows={4}
+                maxLength={1000}
+              />
+            </label>
+            <label className="text-xs text-brand-dark">
+              Tags (comma separated)
+              <input
+                className="w-full mt-1 px-2 py-1 border border-brand-dark rounded"
+                value={newTags}
+                onChange={e => setNewTags(e.target.value)}
+                placeholder="e.g. ai, productivity"
+              />
+            </label>
+            <div className="flex gap-2 justify-end mt-2">
+              <button
+                type="button"
+                className="px-3 py-1 rounded bg-gray-200 text-gray-800 hover:bg-gray-300"
+                onClick={() => setShowAdd(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-3 py-1 rounded bg-brand-dark text-brand-light hover:bg-brand focus:outline-brand-dark"
+              >
+                Save
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* Error/Warning Banner */}
       {error && (
