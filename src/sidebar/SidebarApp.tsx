@@ -1,6 +1,57 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { Snippet } from '../shared/types';
+import { getSnippets } from '../shared/storage';
+
+const MOCK_SNIPPETS: Snippet[] = [
+  {
+    id: '1',
+    title: 'Sample Prompt',
+    content: 'This is a sample AI prompt you can use anywhere.',
+    tags: ['example', 'test'],
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    isFavorite: false,
+  },
+  {
+    id: '2',
+    title: 'Greeting',
+    content: 'Hello, how can I help you today?',
+    tags: ['greeting'],
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    isFavorite: true,
+  },
+];
 
 const SidebarApp: React.FC = () => {
+  const [snippets, setSnippets] = useState<Snippet[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // If chrome.storage is available, use it; otherwise, use mock data
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      getSnippets().then(data => {
+        setSnippets(data);
+        setLoading(false);
+      }).catch(e => {
+        setError('Failed to load snippets from storage.');
+        setLoading(false);
+      });
+      const handleChange = (changes: any, area: string) => {
+        if (area === 'local' && changes.snippets) {
+          setSnippets(changes.snippets.newValue || []);
+        }
+      };
+      chrome.storage.onChanged.addListener(handleChange);
+      return () => chrome.storage.onChanged.removeListener(handleChange);
+    } else {
+      setSnippets(MOCK_SNIPPETS);
+      setLoading(false);
+      setError('chrome.storage is not available. Showing mock data.');
+    }
+  }, []);
+
   return (
     <div className="flex flex-col h-screen w-80 bg-brand-light border-r border-brand-dark">
       {/* Header */}
@@ -31,21 +82,36 @@ const SidebarApp: React.FC = () => {
         </div>
       </div>
 
+      {/* Error/Warning Banner */}
+      {error && (
+        <div className="bg-yellow-200 text-yellow-900 text-xs px-3 py-2 border-b border-yellow-400 text-center">
+          {error}
+        </div>
+      )}
+
       {/* Snippet List */}
       <main className="flex-1 overflow-y-auto p-3">
         <div className="space-y-3">
-          {/* Placeholder for Snippet Items */}
-          <div className="bg-white rounded shadow p-3 flex flex-col gap-1 border border-brand-dark">
-            <div className="flex items-center justify-between">
-              <span className="font-medium text-brand-dark">Prompt Title</span>
-              <button className="text-xs text-brand-dark underline">Expand</button>
-            </div>
-            <div className="truncate text-gray-700 text-sm">This is a preview of the prompt content...</div>
-            <div className="flex gap-2 mt-1">
-              <span className="bg-brand px-2 py-0.5 rounded text-xs text-brand-dark">example</span>
-            </div>
-          </div>
-          {/* More snippet items will be rendered here */}
+          {loading ? (
+            <div className="text-center text-gray-500">Loading...</div>
+          ) : snippets.length === 0 ? (
+            <div className="text-center text-gray-500">No snippets yet.</div>
+          ) : (
+            snippets.map(snippet => (
+              <div key={snippet.id} className="bg-white rounded shadow p-3 flex flex-col gap-1 border border-brand-dark">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-brand-dark">{snippet.title}</span>
+                  <button className="text-xs text-brand-dark underline">Expand</button>
+                </div>
+                <div className="truncate text-gray-700 text-sm">{snippet.content}</div>
+                <div className="flex gap-2 mt-1">
+                  {snippet.tags.map(tag => (
+                    <span key={tag} className="bg-brand px-2 py-0.5 rounded text-xs text-brand-dark">{tag}</span>
+                  ))}
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </main>
 
