@@ -394,9 +394,48 @@ const SidebarApp: React.FC = () => {
                       <div className="flex items-center justify-between mb-2">
                         <h3 className="font-semibold text-yellow-900 truncate max-w-[60%]">{snippet.title}</h3>
                         <div className="flex gap-2 text-sm">
-                          <button className="text-blue-600 hover:underline" onClick={() => setExpandedId(expanded ? null : snippet.id)}>Expand</button>
-                          <button className="text-yellow-600 hover:underline" onClick={() => openEditModal(snippet)}>Edit</button>
-                          <button className="text-red-600 hover:underline" onClick={() => handleDeleteSnippet(snippet.id)}>Delete</button>
+                          {/* Expand/Collapse */}
+                          <button
+                            className="text-blue-600 hover:text-blue-800 transition"
+                            onClick={() => setExpandedId(expanded ? null : snippet.id)}
+                            aria-label={expanded ? "Collapse" : "Expand"}
+                            title={expanded ? "Collapse" : "Expand"}
+                            type="button"
+                          >
+                            {expanded ? (
+                              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" className="bi bi-chevron-up" viewBox="0 0 16 16">
+                                <path fillRule="evenodd" d="M1.646 10.854a.5.5 0 0 1 .708 0L8 4.207l5.646 6.647a.5.5 0 0 1-.708.708l-5.292-6.208-5.292 6.208a.5.5 0 0 1-.708-.708z"/>
+                              </svg>
+                            ) : (
+                              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" className="bi bi-chevron-down" viewBox="0 0 16 16">
+                                <path fillRule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/>
+                              </svg>
+                            )}
+                          </button>
+                          {/* Edit */}
+                          <button
+                            className="text-yellow-600 hover:text-yellow-800 transition"
+                            onClick={() => openEditModal(snippet)}
+                            aria-label="Edit"
+                            title="Edit"
+                            type="button"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" className="bi bi-pencil" viewBox="0 0 16 16">
+                              <path d="M12.146.854a.5.5 0 0 1 .708 0l2.292 2.292a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-4 1.5a.5.5 0 0 1-.65-.65l1.5-4a.5.5 0 0 1 .11-.168l10-10zM11.207 2L2 11.207V13h1.793L14 4.793 11.207 2zm1.586-1.586a1.5 1.5 0 0 0-2.121 0l-10 10a1.5 1.5 0 0 0-.354.561l-1.5 4a1.5 1.5 0 0 0 1.95 1.95l4-1.5a1.5 1.5 0 0 0 .561-.354l10-10a1.5 1.5 0 0 0 0-2.121l-2.292-2.292z"/>
+                            </svg>
+                          </button>
+                          {/* Delete */}
+                          <button
+                            className="text-red-600 hover:text-red-800 transition"
+                            onClick={() => handleDeleteSnippet(snippet.id)}
+                            aria-label="Delete"
+                            title="Delete"
+                            type="button"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" className="bi bi-trash" viewBox="0 0 16 16">
+                              <path d="M5.5 5.5A.5.5 0 0 1 6 5h4a.5.5 0 0 1 .5.5V6h-5v-.5zM3.5 6V5a2 2 0 0 1 2-2h5a2 2 0 0 1 2 2v1h1.5a.5.5 0 0 1 0 1H14v7a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7h-.5a.5.5 0 0 1 0-1H3.5zm1 8A1 1 0 0 0 5 15h6a1 1 0 0 0 1-1V7H4v7z"/>
+                            </svg>
+                          </button>
                         </div>
                       </div>
                       <div className="text-gray-700 mb-2 whitespace-pre-line max-h-24 overflow-hidden">{snippet.content}</div>
