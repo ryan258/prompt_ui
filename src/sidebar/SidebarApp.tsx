@@ -140,6 +140,32 @@ const SidebarApp: React.FC = () => {
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
 
+  const handleCopyContent = async (content: string) => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setNotification('Copied!');
+      setTimeout(() => setNotification(null), 1500);
+    } catch {
+      setNotification('Copy failed');
+      setTimeout(() => setNotification(null), 1500);
+    }
+  };
+
+  const handlePasteContent = (content: string) => {
+    if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.query && chrome.tabs.sendMessage) {
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs[0]?.id) {
+          chrome.tabs.sendMessage(tabs[0].id, { type: 'PASTE_SNIPPET_CONTENT', content });
+          setNotification('Pasted!');
+          setTimeout(() => setNotification(null), 1500);
+        }
+      });
+    } else {
+      setNotification('Paste not supported');
+      setTimeout(() => setNotification(null), 1500);
+    }
+  };
+
   useEffect(() => {
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
       getSnippets().then(data => {
@@ -394,6 +420,18 @@ const SidebarApp: React.FC = () => {
                       <div className="flex items-center justify-between mb-2">
                         <h3 className="font-semibold text-yellow-900 truncate max-w-[60%]">{snippet.title}</h3>
                         <div className="flex gap-2 text-sm">
+                          {/* Copy */}
+                          <button
+                            className="text-green-600 hover:text-green-800 transition"
+                            onClick={() => handleCopyContent(snippet.content)}
+                            aria-label="Copy"
+                            title="Copy"
+                            type="button"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" className="bi bi-clipboard" viewBox="0 0 16 16">
+                              <path d="M10 1.5v1a.5.5 0 0 1 .5.5h2A1.5 1.5 0 0 1 14 4.5v9A1.5 1.5 0 0 1 12.5 15h-9A1.5 1.5 0 0 1 2 13.5v-9A1.5 1.5 0 0 1 3.5 3h2A.5.5 0 0 0 6 2.5v-1A.5.5 0 0 1 6.5 1h3a.5.5 0 0 1 .5.5zM6 1.5v1A1.5 1.5 0 0 1 4.5 4h-1A.5.5 0 0 0 3 4.5v9A.5.5 0 0 0 3.5 14h9a.5.5 0 0 0 .5-.5v-9a.5.5 0 0 0-.5-.5h-1A1.5 1.5 0 0 1 10 2.5v-1a.5.5 0 0 0-1 0zm1 1V2a.5.5 0 0 0-1 0v.5a.5.5 0 0 0 1 0z"/>
+                            </svg>
+                          </button>
                           {/* Expand/Collapse */}
                           <button
                             className="text-blue-600 hover:text-blue-800 transition"
@@ -434,6 +472,19 @@ const SidebarApp: React.FC = () => {
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" className="bi bi-trash" viewBox="0 0 16 16">
                               <path d="M5.5 5.5A.5.5 0 0 1 6 5h4a.5.5 0 0 1 .5.5V6h-5v-.5zM3.5 6V5a2 2 0 0 1 2-2h5a2 2 0 0 1 2 2v1h1.5a.5.5 0 0 1 0 1H14v7a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7h-.5a.5.5 0 0 1 0-1H3.5zm1 8A1 1 0 0 0 5 15h6a1 1 0 0 0 1-1V7H4v7z"/>
+                            </svg>
+                          </button>
+                          {/* Paste */}
+                          <button
+                            className="text-cyan-600 hover:text-cyan-800 transition"
+                            onClick={() => handlePasteContent(snippet.content)}
+                            aria-label="Paste"
+                            title="Paste"
+                            type="button"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" className="bi bi-clipboard-check" viewBox="0 0 16 16">
+                              <path fillRule="evenodd" d="M10 1.5v1a.5.5 0 0 0 .5.5h2A1.5 1.5 0 0 1 14 4.5v9A1.5 1.5 0 0 1 12.5 15h-9A1.5 1.5 0 0 1 2 13.5v-9A1.5 1.5 0 0 1 3.5 3h2A.5.5 0 0 0 6 2.5v-1A.5.5 0 0 1 6.5 1h3a.5.5 0 0 1 .5.5zM6 1.5v1A1.5 1.5 0 0 1 4.5 4h-1A.5.5 0 0 0 3 4.5v9A.5.5 0 0 0 3.5 14h9a.5.5 0 0 0 .5-.5v-9a.5.5 0 0 0-.5-.5h-1A1.5 1.5 0 0 1 10 2.5v-1a.5.5 0 0 0-1 0zm1 1V2a.5.5 0 0 0-1 0v.5a.5.5 0 0 0 1 0z"/>
+                              <path fillRule="evenodd" d="M10.97 7.97a.75.75 0 0 1 1.07 1.05l-3 3.5a.75.75 0 0 1-1.08.02l-1.5-1.5a.75.75 0 1 1 1.06-1.06l.97.97 2.47-2.98a.75.75 0 0 1 1.06-.02z"/>
                             </svg>
                           </button>
                         </div>
