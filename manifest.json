@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Creative Toolbox",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Capture, organize, and inject reusable text content across web applications.",
   "action": {
     "default_title": "Open Creative Toolbox"
@@ -23,6 +23,7 @@
       "run_at": "document_idle"
     }
   ],
+  "host_permissions": ["<all_urls>"],
   "side_panel": {
     "default_path": "index.html"
   },
