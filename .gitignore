@@ -1,7 +1,15 @@
 .env
 
 node_modules
+dist
 package-lock.json
+
+
+# prompts
+prompts.md
+prompts2.md
+prompts1.md
+prompts-script.md
 
 # windsurf rules
 .windsurfrules
