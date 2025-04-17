@@ -1,6 +1,29 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Snippet } from '../shared/types';
-import { getSnippets, addSnippet, updateSnippet, deleteSnippet } from '../shared/storage';
+import { getSnippets, addSnippet, updateSnippet, deleteSnippet, saveSnippets } from '../shared/storage';
+
+// Robust CSV line parser that handles quotes, commas, and newlines
+function parseCSVLine(line: string): string[] {
+  const result = [];
+  let inQuotes = false;
+  let value = '';
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"' && line[i + 1] === '"') {
+      value += '"';
+      i++; // skip next quote
+    } else if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === ',' && !inQuotes) {
+      result.push(value);
+      value = '';
+    } else {
+      value += char;
+    }
+  }
+  result.push(value);
+  return result;
+}
 
 const MOCK_SNIPPETS: Snippet[] = [
   {
@@ -114,6 +137,8 @@ const SidebarApp: React.FC = () => {
   const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
   const [editTags, setEditTags] = useState('');
+  const importInputRef = useRef<HTMLInputElement | null>(null);
+  const [notification, setNotification] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
@@ -200,6 +225,94 @@ const SidebarApp: React.FC = () => {
     setEditTags('');
   };
 
+  const handleExportCSV = async () => {
+    const snippets = typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local
+      ? await getSnippets()
+      : snippets;
+    const header = 'id,title,content,tags,createdAt,updatedAt,isFavorite';
+    const rows = snippets.map(s =>
+      [
+        s.id,
+        `"${s.title.replace(/"/g, '""')}"`,
+        `"${s.content.replace(/"/g, '""')}"`,
+        `"${s.tags.join(';')}"`,
+        s.createdAt,
+        s.updatedAt,
+        s.isFavorite
+      ].join(',')
+    );
+    const csv = [header, ...rows].join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'creative-toolbox-snippets.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setNotification('Snippets exported as CSV!');
+    setTimeout(() => setNotification(null), 3000);
+  };
+
+  const handleImportCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const text = await file.text();
+    const lines = text.split(/\r?\n/).filter(Boolean);
+
+    // Parse header and get column indices robustly
+    const rawHeader = lines[0];
+    const columns = parseCSVLine(rawHeader).map(h => h.trim().toLowerCase());
+    const dataRows = lines.slice(1);
+
+    const importedSnippets: Snippet[] = dataRows.map(row => {
+      const fields = parseCSVLine(row);
+      const get = (name: string) => {
+        const idx = columns.indexOf(name);
+        return idx !== -1 && fields[idx] !== undefined ? fields[idx] : '';
+      };
+      const clean = (str: string | undefined | null = '') => (str ?? '').replace(/^"|"$/g, '').replace(/""/g, '"');
+      const id = clean(get('id')) || uuid();
+      const title = clean(get('title'));
+      const content = clean(get('content'));
+      const tags = clean(get('tags'));
+      const tagArr = tags.split(/[#;]+/).map(t => t.trim()).filter(Boolean);
+      const parseNum = (n: string) => Number((n ?? '').replace(/"/g, '')) || Date.now();
+      const parseBool = (b: string) => /^true$/i.test((b ?? '').replace(/"/g, ''));
+
+      return {
+        id,
+        title,
+        content,
+        tags: tagArr,
+        createdAt: parseNum(get('createdat')),
+        updatedAt: parseNum(get('updatedat')),
+        isFavorite: parseBool(get('isfavorite'))
+      };
+    });
+
+    // Merge: skip imported snippets with duplicate IDs
+    const existing: Snippet[] = typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local
+      ? await getSnippets()
+      : [];
+    const merged = [
+      ...existing,
+      ...importedSnippets.filter(
+        (s: Snippet) => !existing.some((e: Snippet) => e.id === s.id)
+      )
+    ];
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      await saveSnippets(merged);
+    }
+    setSnippets(merged);
+    setNotification('Snippets imported from CSV!');
+    setTimeout(() => setNotification(null), 3000);
+    if (importInputRef.current) {
+      importInputRef.current.value = '';
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen w-80 bg-brand-light border-r border-brand-dark font-sans">
       {/* Header */}
@@ -243,6 +356,28 @@ const SidebarApp: React.FC = () => {
           {error}
         </div>
       )}
+
+      {/* Export/Import Buttons */}
+      <div className="flex gap-2 justify-end px-3 py-2 border-b border-brand-dark bg-brand-light">
+        <button
+          className="px-2 py-1 rounded bg-brand-dark text-brand-light text-xs font-semibold shadow hover:bg-brand focus:outline-brand-dark transition-colors"
+          onClick={handleExportCSV}
+        >
+          Export CSV
+        </button>
+        <input
+          ref={importInputRef}
+          type="file"
+          accept=".csv"
+          onChange={handleImportCSV}
+        />
+        <button
+          className="px-2 py-1 rounded bg-brand-dark text-brand-light text-xs font-semibold shadow hover:bg-brand focus:outline-brand-dark transition-colors"
+          onClick={() => importInputRef.current?.click()}
+        >
+          Import CSV
+        </button>
+      </div>
 
       {/* Snippet List */}
       <main className="flex-1 overflow-y-auto p-3 bg-brand-light">
@@ -437,6 +572,13 @@ const SidebarApp: React.FC = () => {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Notification */}
+      {notification && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-brand-dark text-brand-light px-4 py-2 rounded shadow-lg z-50 text-sm">
+          {notification}
         </div>
       )}
 
