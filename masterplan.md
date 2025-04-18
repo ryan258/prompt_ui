@@ -37,10 +37,11 @@ The primary user is someone who:
 
 #### Sidebar UI
 - Dockable, collapsible sidebar with bright, modern design
-- Snippet list with truncated previews and expand buttons
+- Snippet list with multi-line previews (up to 3 lines) and expand/collapse buttons
 - Tag filtering system with free-form tag creation
 - Search functionality across all prompts
 - Simple settings panel
+- Snippet cards can be expanded/collapsed independently; multiple can be open at once
 
 #### Content Management
 - Right-click context menu to save selected text
@@ -58,6 +59,7 @@ The primary user is someone who:
 - One-click insertion to minimize effort
 - Keyboard shortcuts for common actions
 - Proper ARIA attributes and screen reader compatibility
+- All interactive elements are keyboard accessible; expand/collapse works with keyboard and screen readers
 
 ### Phase 2: Enhanced Organization
 

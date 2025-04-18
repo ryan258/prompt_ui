@@ -13,6 +13,8 @@ A productivity-focused Chrome extension for efficiently capturing, organizing, a
 - **Persistent Storage:** Uses Chrome’s storage API for reliable, profile-specific data storage.
 - **Notifications:** Get instant feedback on import/export and other actions.
 - **Accessible & Responsive:** Modern design with accessibility in mind.
+- **Reveal/Expand Multiple Snippets:** Expand as many snippet cards as you want at once; each card can be independently expanded or collapsed.
+- **Preview First 3 Lines:** When collapsed, each snippet card shows up to the first three lines of the prompt for quick skimming.
 
 ---
 
@@ -75,6 +77,8 @@ public/         # Static assets
 
 ## 📝 Development Notes
 
+- **Accessibility:** All interactive elements are keyboard accessible and use ARIA attributes. Expand/collapse supports keyboard and screen readers.
+- **Expandable Previews:** Cards can be expanded/collapsed independently. Collapsed cards show a multi-line preview (up to 3 lines).
 - **Profile-specific data:** Snippets are stored per Chrome profile. To sync between browsers, use the export/import feature.
 - **Testing:**  
   ```sh
