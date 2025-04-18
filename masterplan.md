@@ -88,6 +88,13 @@ The primary user is someone who:
 - Customizable sidebar width
 - Refined onboarding process
 - UI preference settings (font size, contrast)
+- Refactor large components (like SidebarApp) into smaller, focused components (e.g., SnippetCard, TagFilter, ImportExportPanel, Notification) for maintainability and scalability.
+- Centralize utility functions for CSV/tags/cleaning to reduce duplication and improve reliability.
+- Adopt a robust CSV parsing library (e.g., PapaParse) for import/export reliability and edge case handling.
+- Expand test coverage for edge cases, accessibility, and error handling.
+- Consider using useReducer or React context for more scalable state management as the app grows.
+- Prepare for scale: implement list virtualization (e.g., react-window) for handling large numbers of snippets efficiently.
+- Add a global error boundary for React to catch unexpected UI errors and improve user feedback.
 
 ### Phase 3: Power Features
 
