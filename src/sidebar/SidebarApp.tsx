@@ -152,12 +152,38 @@ const SidebarApp: React.FC = () => {
   };
 
   const handlePasteContent = (content: string) => {
-    if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.query && chrome.tabs.sendMessage) {
+    if (
+      typeof chrome !== 'undefined' &&
+      chrome.tabs && chrome.tabs.query &&
+      chrome.tabs.sendMessage &&
+      chrome.scripting && chrome.runtime && chrome.runtime.getManifest
+    ) {
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        if (tabs[0]?.id) {
-          chrome.tabs.sendMessage(tabs[0].id, { type: 'PASTE_SNIPPET_CONTENT', content });
-          setNotification('Pasted!');
-          setTimeout(() => setNotification(null), 1500);
+        const tabId = tabs[0]?.id;
+        if (tabId) {
+          // Try to inject the content script first (if not already injected)
+          chrome.scripting.executeScript(
+            {
+              target: { tabId },
+              files: ['src/content/index.js'], // Vite/webpack output path
+            },
+            () => {
+              // Now send the paste message
+              chrome.tabs.sendMessage(
+                tabId,
+                { type: 'PASTE_SNIPPET_CONTENT', content },
+                (response) => {
+                  if (chrome.runtime.lastError) {
+                    setNotification('Paste failed: Not supported on this page.');
+                    setTimeout(() => setNotification(null), 2500);
+                  } else {
+                    setNotification('Pasted!');
+                    setTimeout(() => setNotification(null), 1500);
+                  }
+                }
+              );
+            }
+          );
         }
       });
     } else {
@@ -339,6 +365,14 @@ const SidebarApp: React.FC = () => {
     }
   };
 
+  const handleTagClick = (tag: string) => {
+    setActiveTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+    );
+  };
+
+  const handleClearTags = () => setActiveTags([]);
+
   return (
     <div className="w-full max-w-lg mx-auto min-h-screen bg-brand-light px-2 sm:px-4 flex flex-col">
       {/* Header */}
@@ -391,6 +425,23 @@ const SidebarApp: React.FC = () => {
           Export CSV
         </button>
       </div>
+
+      {/* Active Tags */}
+      {activeTags.length > 0 && (
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-xs text-blue-700 font-semibold">Filtering by:</span>
+          {activeTags.map((tag) => (
+            <span key={tag} className="px-2 py-0.5 rounded bg-blue-600 text-white text-xs font-medium border border-blue-800">{tag}</span>
+          ))}
+          <button
+            className="ml-2 px-2 py-0.5 rounded text-xs font-medium bg-gray-200 text-gray-700 hover:bg-gray-300 border border-gray-300"
+            onClick={handleClearTags}
+            type="button"
+          >
+            Clear
+          </button>
+        </div>
+      )}
 
       {/* Snippet List */}
       <main className="flex-1 overflow-y-auto py-3">
@@ -471,7 +522,8 @@ const SidebarApp: React.FC = () => {
                             type="button"
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" className="bi bi-trash" viewBox="0 0 16 16">
-                              <path d="M5.5 5.5A.5.5 0 0 1 6 5h4a.5.5 0 0 1 .5.5V6h-5v-.5zM3.5 6V5a2 2 0 0 1 2-2h5a2 2 0 0 1 2 2v1h1.5a.5.5 0 0 1 0 1H14v7a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7h-.5a.5.5 0 0 1 0-1H3.5zm1 8A1 1 0 0 0 5 15h6a1 1 0 0 0 1-1V7H4v7z"/>
+                              <path d="M5.5 5.5A.5.5 0 0 1 6 5h4a.5.5 0 0 1 .5.5V6h-5v-.5zM3.5 6V5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 .5.5V6h-9a.5.5 0 0 1-.5.5z"/>
+                              <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
                             </svg>
                           </button>
                           {/* Paste */}
@@ -483,16 +535,24 @@ const SidebarApp: React.FC = () => {
                             type="button"
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" className="bi bi-clipboard-check" viewBox="0 0 16 16">
-                              <path fillRule="evenodd" d="M10 1.5v1a.5.5 0 0 0 .5.5h2A1.5 1.5 0 0 1 14 4.5v9A1.5 1.5 0 0 1 12.5 15h-9A1.5 1.5 0 0 1 2 13.5v-9A1.5 1.5 0 0 1 3.5 3h2A.5.5 0 0 0 6 2.5v-1A.5.5 0 0 1 6.5 1h3a.5.5 0 0 1 .5.5zM6 1.5v1A1.5 1.5 0 0 1 4.5 4h-1A.5.5 0 0 0 3 4.5v9A.5.5 0 0 0 3.5 14h9a.5.5 0 0 0 .5-.5v-9a.5.5 0 0 0-.5-.5h-1A1.5 1.5 0 0 1 10 2.5v-1a.5.5 0 0 0-1 0zm1 1V2a.5.5 0 0 0-1 0v.5a.5.5 0 0 0 1 0z"/>
+                              <path fillRule="evenodd" d="M10 1.5a.5.5 0 0 1 .5.5h2A1.5 1.5 0 0 1 14 4.5v9A1.5 1.5 0 0 1 12.5 15h-9A1.5 1.5 0 0 1 2 13.5v-9A1.5 1.5 0 0 1 3.5 3h2A.5.5 0 0 0 6 2.5v-1A.5.5 0 0 1 6.5 1h3a.5.5 0 0 1 .5.5zM6 1.5v1A1.5 1.5 0 0 1 4.5 4h-1A.5.5 0 0 0 3 4.5v9A.5.5 0 0 0 3.5 14h9a.5.5 0 0 0 .5-.5v-9a.5.5 0 0 0-.5-.5h-1A1.5 1.5 0 0 1 10 2.5v-1a.5.5 0 0 0-1 0zm1 1V2a.5.5 0 0 0-1 0v.5a.5.5 0 0 0 1 0z"/>
                               <path fillRule="evenodd" d="M10.97 7.97a.75.75 0 0 1 1.07 1.05l-3 3.5a.75.75 0 0 1-1.08.02l-1.5-1.5a.75.75 0 1 1 1.06-1.06l.97.97 2.47-2.98a.75.75 0 0 1 1.06-.02z"/>
                             </svg>
                           </button>
                         </div>
                       </div>
                       <div className="text-gray-700 mb-2 whitespace-pre-line max-h-24 overflow-hidden">{snippet.content}</div>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {snippet.tags && snippet.tags.length > 0 && snippet.tags.map((tag: string) => (
-                          <span key={tag} className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium border border-yellow-200">{tag}</span>
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        {snippet.tags.map((tag) => (
+                          <button
+                            key={tag}
+                            className={`px-2 py-0.5 rounded text-xs font-medium border transition ${activeTags.includes(tag) ? 'bg-blue-600 text-white border-blue-700' : 'bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200'}`}
+                            onClick={() => handleTagClick(tag)}
+                            aria-pressed={activeTags.includes(tag)}
+                            type="button"
+                          >
+                            {tag}
+                          </button>
                         ))}
                       </div>
                       {snippet.isFavorite && (
