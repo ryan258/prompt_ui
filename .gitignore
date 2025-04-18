@@ -6,10 +6,7 @@ package-lock.json
 
 
 # prompts
-prompts.md
-prompts2.md
-prompts1.md
-prompts-script.md
+prompts*.md
 p-snippets.csv
 
 # windsurf rules

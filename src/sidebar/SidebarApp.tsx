@@ -130,7 +130,7 @@ const SidebarApp: React.FC = () => {
   const [newTitle, setNewTitle] = useState('');
   const [newContent, setNewContent] = useState('');
   const [newTags, setNewTags] = useState('');
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedIds, setExpandedIds] = useState<string[]>([]);
   const [search, setSearch] = useState('');
   const [activeTags, setActiveTags] = useState<string[]>([]);
   const [editId, setEditId] = useState<string | null>(null);
@@ -161,19 +161,17 @@ const SidebarApp: React.FC = () => {
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         const tabId = tabs[0]?.id;
         if (tabId) {
-          // Try to inject the content script first (if not already injected)
           chrome.scripting.executeScript(
             {
               target: { tabId },
-              files: ['src/content/index.js'], // Vite/webpack output path
+              files: ['content.js'], // Use the correct path, relative to extension root
             },
             () => {
-              // Now send the paste message
               chrome.tabs.sendMessage(
                 tabId,
                 { type: 'PASTE_SNIPPET_CONTENT', content },
                 (response) => {
-                  if (chrome.runtime.lastError) {
+                  if (chrome.runtime.lastError || !response || !response.ok) {
                     setNotification('Paste failed: Not supported on this page.');
                     setTimeout(() => setNotification(null), 2500);
                   } else {
@@ -244,7 +242,7 @@ const SidebarApp: React.FC = () => {
     } else {
       setSnippets(snippets.filter(s => s.id !== id));
     }
-    if (expandedId === id) setExpandedId(null);
+    if (expandedIds.includes(id)) setExpandedIds(prev => prev.filter(i => i !== id));
   };
 
   const openEditModal = (snippet: Snippet) => {
@@ -462,11 +460,19 @@ const SidebarApp: React.FC = () => {
                   return matchesSearch && matchesTags;
                 })
                 .map(snippet => {
-                  const expanded = expandedId === snippet.id;
+                  const expanded = expandedIds.includes(snippet.id);
                   return (
                     <div
                       key={snippet.id}
                       className="bg-white rounded-xl shadow-md p-4 border border-gray-200 hover:shadow-lg transition relative w-full max-w-full"
+                      tabIndex={0}
+                      aria-expanded={expanded}
+                      aria-label={`Snippet: ${snippet.title}`}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          setExpandedIds(prev => expanded ? prev.filter(id => id !== snippet.id) : [...prev, snippet.id]);
+                        }
+                      }}
                     >
                       <div className="flex items-center justify-between mb-2">
                         <h3 className="font-semibold text-yellow-900 truncate max-w-[60%]">{snippet.title}</h3>
@@ -486,9 +492,9 @@ const SidebarApp: React.FC = () => {
                           {/* Expand/Collapse */}
                           <button
                             className="text-blue-600 hover:text-blue-800 transition"
-                            onClick={() => setExpandedId(expanded ? null : snippet.id)}
-                            aria-label={expanded ? "Collapse" : "Expand"}
-                            title={expanded ? "Collapse" : "Expand"}
+                            onClick={() => setExpandedIds(prev => expanded ? prev.filter(id => id !== snippet.id) : [...prev, snippet.id])}
+                            aria-label={expanded ? "Hide content" : "Show content"}
+                            title={expanded ? "Hide content" : "Show content"}
                             type="button"
                           >
                             {expanded ? (
@@ -541,7 +547,16 @@ const SidebarApp: React.FC = () => {
                           </button>
                         </div>
                       </div>
-                      <div className="text-gray-700 mb-2 whitespace-pre-line max-h-24 overflow-hidden">{snippet.content}</div>
+                      {/* Snippet Content: Reveal/Hide */}
+                      {expanded ? (
+                        <div className="text-gray-700 mb-2 whitespace-pre-line break-words">
+                          {snippet.content}
+                        </div>
+                      ) : (
+                        <div className="text-gray-700 mb-2 overflow-hidden max-h-[4.5em]" style={{display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', whiteSpace: 'pre-line'}} title={snippet.content}>
+                          {snippet.content}
+                        </div>
+                      )}
                       <div className="flex flex-wrap gap-1 mb-2">
                         {snippet.tags.map((tag) => (
                           <button
