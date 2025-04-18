@@ -2,27 +2,51 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Snippet } from '../shared/types';
 import { getSnippets, addSnippet, updateSnippet, deleteSnippet, saveSnippets } from '../shared/storage';
 
-// Robust CSV line parser that handles quotes, commas, and newlines
-function parseCSVLine(line: string): string[] {
-  const result = [];
-  let inQuotes = false;
+// Robust CSV parser that handles multi-line quoted fields, commas, and newlines
+function parseCSV(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
   let value = '';
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i];
-    if (char === '"' && line[i + 1] === '"') {
-      value += '"';
-      i++; // skip next quote
-    } else if (char === '"') {
-      inQuotes = !inQuotes;
-    } else if (char === ',' && !inQuotes) {
-      result.push(value);
-      value = '';
+  let inQuotes = false;
+  let i = 0;
+  while (i < text.length) {
+    const char = text[i];
+    if (inQuotes) {
+      if (char === '"') {
+        if (text[i + 1] === '"') {
+          value += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        value += char;
+      }
     } else {
-      value += char;
+      if (char === '"') {
+        inQuotes = true;
+      } else if (char === ',') {
+        row.push(value);
+        value = '';
+      } else if (char === '\n' || char === '\r') {
+        // Handle CRLF and LF
+        if (char === '\r' && text[i + 1] === '\n') i++;
+        row.push(value);
+        value = '';
+        if (row.some(cell => cell.trim() !== '')) rows.push(row); // Only push non-empty rows
+        row = [];
+      } else {
+        value += char;
+      }
     }
+    i++;
   }
-  result.push(value);
-  return result;
+  // Push last value
+  if (value.length > 0 || row.length > 0) {
+    row.push(value);
+    if (row.some(cell => cell.trim() !== '')) rows.push(row);
+  }
+  return rows;
 }
 
 const MOCK_SNIPPETS: Snippet[] = [
@@ -280,12 +304,13 @@ const SidebarApp: React.FC = () => {
       ? await getSnippets()
       : snippets;
     const header = 'id,title,content,tags,createdAt,updatedAt,isFavorite';
+    const escape = (str: string) => '"' + (str ?? '').replace(/"/g, '""') + '"';
     const rows = snippets.map(s =>
       [
-        s.id,
-        `"${s.title.replace(/"/g, '""')}"`,
-        `"${s.content.replace(/"/g, '""')}"`,
-        `"${s.tags.join(';')}"`,
+        escape(s.id),
+        escape(s.title),
+        escape(s.content),
+        escape((s.tags || []).join(';')),
         s.createdAt,
         s.updatedAt,
         s.isFavorite
@@ -309,40 +334,34 @@ const SidebarApp: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     const text = await file.text();
-    const lines = text.split(/\r?\n/).filter(Boolean);
+    const rows = parseCSV(text);
+    if (!rows.length) return;
+    const rawHeader = rows[0];
+    const columns = rawHeader.map(h => h.trim().toLowerCase());
+    const dataRows = rows.slice(1);
 
-    // Parse header and get column indices robustly
-    const rawHeader = lines[0];
-    const columns = parseCSVLine(rawHeader).map(h => h.trim().toLowerCase());
-    const dataRows = lines.slice(1);
-
-    const importedSnippets: Snippet[] = dataRows.map(row => {
-      const fields = parseCSVLine(row);
+    const importedSnippets: Snippet[] = dataRows.map(fields => {
       const get = (name: string) => {
         const idx = columns.indexOf(name);
         return idx !== -1 && fields[idx] !== undefined ? fields[idx] : '';
       };
       const clean = (str: string | undefined | null = '') => (str ?? '').replace(/^"|"$/g, '').replace(/""/g, '"');
-      const id = clean(get('id')) || uuid();
-      const title = clean(get('title'));
-      const content = clean(get('content'));
-      const tags = clean(get('tags'));
-      const tagArr = tags.split(/[#;]+/).map(t => t.trim()).filter(Boolean);
       const parseNum = (n: string) => Number((n ?? '').replace(/"/g, '')) || Date.now();
       const parseBool = (b: string) => /^true$/i.test((b ?? '').replace(/"/g, ''));
-
+      const title = clean(get('title'));
+      const content = clean(get('content'));
+      if (!title && !content) return null; // Skip rows missing both
       return {
-        id,
+        id: clean(get('id')) || uuid(),
         title,
         content,
-        tags: tagArr,
+        tags: clean(get('tags')).split(';').map(t => t.trim()).filter(Boolean),
         createdAt: parseNum(get('createdat')),
         updatedAt: parseNum(get('updatedat')),
-        isFavorite: parseBool(get('isfavorite'))
+        isFavorite: parseBool(get('isfavorite')),
       };
-    });
+    }).filter(Boolean) as Snippet[];
 
-    // Merge: skip imported snippets with duplicate IDs
     const existing: Snippet[] = typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local
       ? await getSnippets()
       : [];
