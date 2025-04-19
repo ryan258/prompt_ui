@@ -629,7 +629,7 @@ const SidebarApp: React.FC = () => {
                 onChange={e => setNewContent(e.target.value)}
                 required
                 rows={4}
-                maxLength={1000}
+                maxLength={10000}
               />
             </label>
             <label className="text-xs text-brand-dark">
@@ -689,7 +689,7 @@ const SidebarApp: React.FC = () => {
                 onChange={e => setEditContent(e.target.value)}
                 required
                 rows={4}
-                maxLength={1000}
+                maxLength={10000}
               />
             </label>
             <label className="text-xs text-brand-dark">

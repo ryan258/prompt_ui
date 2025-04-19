@@ -4,10 +4,7 @@ node_modules
 dist
 package-lock.json
 
-
-# prompts
-prompts*.md
-p-snippets.csv
-
 # windsurf rules
 .windsurfrules
+
+backups
