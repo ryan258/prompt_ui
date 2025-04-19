@@ -35,3 +35,5 @@ export async function updateSnippet(updated: Snippet): Promise<void> {
     await saveSnippets(snippets);
   }
 }
+
+export type { Snippet };

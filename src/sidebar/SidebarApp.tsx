@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Snippet } from '../shared/types';
 import { getSnippets, addSnippet, updateSnippet, deleteSnippet, saveSnippets } from '../shared/storage';
+import CommandPalette from '../shared/CommandPalette';
 
 // Robust CSV parser that handles multi-line quoted fields, commas, and newlines
 function parseCSV(text: string): string[][] {
@@ -163,6 +164,7 @@ const SidebarApp: React.FC = () => {
   const [editTags, setEditTags] = useState('');
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
+  const [showPalette, setShowPalette] = useState(false);
 
   const handleCopyContent = async (content: string) => {
     try {
@@ -235,6 +237,17 @@ const SidebarApp: React.FC = () => {
       setLoading(false);
       setError('chrome.storage is not available. Showing mock data.');
     }
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.altKey && e.shiftKey && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        setShowPalette(true);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
   }, []);
 
   const handleAddSnippet = async (e: React.FormEvent) => {
@@ -718,6 +731,18 @@ const SidebarApp: React.FC = () => {
             </div>
           </form>
         </div>
+      )}
+
+      {/* Command Palette */}
+      {showPalette && (
+        <CommandPalette
+          snippets={snippets}
+          onSelect={snippet => {
+            handlePasteContent(snippet.content);
+            setShowPalette(false);
+          }}
+          onClose={() => setShowPalette(false)}
+        />
       )}
 
       {/* Notification */}
